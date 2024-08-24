@@ -23,6 +23,22 @@ def google_search(query, num_results=10):
     for result in soup.find_all('div', class_='yuRUbf'):
         title = result.find('h3', class_='LC20lb').text if result.find('h3', class_='LC20lb') else "N/A"
         link = result.find('a')['href'] if result.find('a') else "N/A"
+        if "chromewebstore" in link:
+            print(f"Found chromewebstore link: {link}")
+            response = requests.get(link, headers=headers)
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # Find the div containing the user count
+            user_div = soup.find('div', class_='F9iKBc')
+
+            if user_div:
+                # Extract the text containing the user count
+                user_text = user_div.contents[-1].strip()
+                
+                # Extract just the number
+                user_count = ''.join(filter(str.isdigit, user_text))
+                
+                print(f"Number of users: {user_count}")
         search_results.append((title, link))
     
     return search_results
