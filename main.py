@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
+import pandas as pd
+
 
 def google_search(query, num_results=10):
     # Encode the query for use in the URL
@@ -20,6 +22,8 @@ def google_search(query, num_results=10):
     
     # Find and extract search results
     search_results = []
+    user_data = []
+
     for result in soup.find_all('div', class_='yuRUbf'):
         title = result.find('h3', class_='LC20lb').text if result.find('h3', class_='LC20lb') else "N/A"
         link = result.find('a')['href'] if result.find('a') else "N/A"
@@ -39,20 +43,18 @@ def google_search(query, num_results=10):
                 user_count = ''.join(filter(str.isdigit, user_text))
                 
                 print(f"Number of users: {user_count}")
+                user_data.append((link, user_count))
         search_results.append((title, link))
     
-    return search_results
+    df = pd.DataFrame(user_data, columns=['Link', 'Number of Users'])
+    return df
 
 def main():
     query = input("Enter your search query: ")
     num_results = int(input("Enter the number of results to display: "))
     
     results = google_search(query, num_results)
-    
-    print(f"\nTop {num_results} results for '{query}':\n")
-    for i, (title, link) in enumerate(results, 1):
-        print(f"{i}. {title}")
-        print(f"   {link}\n")
+    print(results)
 
 if __name__ == "__main__":
     main()
