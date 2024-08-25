@@ -23,12 +23,17 @@ def google_search(query, num_results=10):
     # Find and extract search results
     search_results = []
     user_data = []
-
+    extension = []
     for result in soup.find_all('div', class_='yuRUbf'):
         title = result.find('h3', class_='LC20lb').text if result.find('h3', class_='LC20lb') else "N/A"
         link = result.find('a')['href'] if result.find('a') else "N/A"
+        
         if "chromewebstore" in link:
             print(f"Found chromewebstore link: {link}")
+            clean_url = link.split('?')[0]
+            print(clean_url)
+            reviewlink = clean_url + "/reviews"
+            print(reviewlink)
             response = requests.get(link, headers=headers)
             soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -44,9 +49,42 @@ def google_search(query, num_results=10):
                 
                 print(f"Number of users: {user_count}")
                 user_data.append((link, user_count))
-        search_results.append((title, link))
+
+            reviews = requests.get(reviewlink, headers=headers)
+            soup = BeautifulSoup(reviews.content, 'html.parser')
+
+            # Find all review sections
+            review_sections = soup.find_all('section', class_='T7rvce')
+
+            reviews = []
+
+            for section in review_sections:
+                review = {}
+                
+                # Extract reviewer name
+                name_span = section.find('span', class_='LfYwpe')
+                if name_span:
+                    review['name'] = name_span.text.strip()
+                
+                # Extract rating
+                rating_div = section.find('div', class_='B1UG8d')
+                if rating_div:
+                    review['rating'] = rating_div['aria-label']
+                
+                # Extract date
+                date_span = section.find('span', class_='ydlbEf')
+                if date_span:
+                    review['date'] = date_span.text.strip()
+                
+                # Extract review text
+                review_p = section.find('p', class_='fzDEpf')
+                if review_p:
+                    review['text'] = review_p.text.strip()
+                
+                reviews.append(review)
+            extension.append((link,user_count,reviews))
     
-    df = pd.DataFrame(user_data, columns=['Link', 'Number of Users'])
+    df = pd.DataFrame(extension, columns=['Link', 'Number of Users', 'Reviews'])
     return df
 
 def main():
