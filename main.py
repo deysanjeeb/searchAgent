@@ -126,15 +126,20 @@ def webstore_search(query, num_results=10):
             # Find the div containing the user count
             user_div = soup.find('div', class_='F9iKBc')
 
-            if user_div:
+            if user_div.contents:
                 # Extract the text containing the user count
-                user_text = user_div.contents[-1].strip()
-                
-                # Extract just the number
-                user_count = ''.join(filter(str.isdigit, user_text))
-                
-                print(f"Number of users: {user_count}")
-                user_data.append((link, user_count))
+                try:
+                    user_text = user_div.contents[-1].strip()
+                    
+                    # Extract just the number
+                    user_count = ''.join(filter(str.isdigit, user_text))
+                    
+                    print(f"Number of users: {user_count}")
+                    user_data.append((link, user_count))
+                except:
+                    user_count = "N/A"
+                    print(f"Number of users: {user_count}")
+                    user_data.append((link, user_count))
 
             reviews = requests.get(reviewlink, headers=headers)
             soup = BeautifulSoup(reviews.content, 'html.parser')
@@ -184,10 +189,13 @@ def main():
         print(query)
         gsearch = query + 'chrome extension'
         
-        results = webstore_search(query)
-        print(results)
-        results = google_search(gsearch)
-        print(results)
+        webstore_results = webstore_search(query)
+        # print(webstore_results)
+        google_results = google_search(gsearch)
+        # print(google_results)
+        combined_results = pd.concat([webstore_results, google_results], ignore_index=True)
+        combined_results.to_csv(f'{query}.csv', index=False)
+
 
 if __name__ == "__main__":
     main()
