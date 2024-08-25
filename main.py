@@ -174,13 +174,20 @@ def webstore_search(query, num_results=10):
     return df
                 
 def main():
-    query = input("Enter your search query: ")
-    num_results = int(input("Enter the number of results to display: "))
-    gsearch = query + 'chrome extension'
-    results = google_search(gsearch, num_results)
-    print(results)
-    results = webstore_search(query, num_results)
-    print(results)
+    csv_file = 'ideakeywords.csv'
+    df = pd.read_csv(csv_file)
+    data_list = df.values.tolist()
+    print(data_list)
+    # query = input("Enter your search query: ")
+    # num_results = int(input("Enter the number of results to display: "))
+    for query in df['ideas']:
+        print(query)
+        gsearch = query + 'chrome extension'
+        
+        results = webstore_search(query)
+        print(results)
+        results = google_search(gsearch)
+        print(results)
 
 if __name__ == "__main__":
     main()
