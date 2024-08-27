@@ -8,6 +8,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
+
+driver = webdriver.Chrome()  # Or webdriver.Firefox(), etc.
+
+
 def google_search(query, num_results=10):
     # Encode the query for use in the URL
     encoded_query = urllib.parse.quote(query)
@@ -92,13 +96,104 @@ def google_search(query, num_results=10):
     return df
 
 
-# def getReviews(link):
+def loadAllReviews(soup, reviewlink):
+    try:
+        load_more = soup.find('button', class_='mUIrbf-LgbsSe')
+        still_loading = True
+        # for button in load_more:
+            # Get the text of the button (or any other attribute you want to use for identification)
+        driver.get(reviewlink)
+        wait = WebDriverWait(driver, 10)
+        if load_more:
+            button_text = load_more.text.strip()
+            print('button ',button_text)
+        
+        # Find the corresponding element in Selenium
+        try:
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            selenium_button = driver.find_element(By.CLASS_NAME, 'mUIrbf-LgbsSe-OWXEXe-dgl2Hf')
+            
+            while still_loading:
+                # Click the button
+                if button_text == 'Load more':
+                    selenium_button.click()
+                    time.sleep(2)
+                    # Wait for any changes after clicking (adjust as needed)
+                    wait.until(EC.staleness_of(selenium_button))
+                    
+                    # Get the updated page source and parse it again
+                    updated_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    load_more = updated_soup.find('button', class_='mUIrbf-LgbsSe')
+                    if load_more:
+                        button_text = load_more.text.strip()
+                        selenium_button = driver.find_element(By.CLASS_NAME, 'mUIrbf-LgbsSe-OWXEXe-dgl2Hf')
 
+                    else:
+                        still_loading = False
+                    
+                else:
+                    still_loading = False
+
+                
+                print(f"Clicked button with text: {button_text}")
+                review_sections = updated_soup.find_all('section', class_='T7rvce')
+            print(len(review_sections))
+            return review_sections
+        
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            try:
+                review_sections = soup.find_all('section', class_='T7rvce')
+                print(len(review_sections))
+                return review_sections
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                return []
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return []        
+
+
+def getReviews(soup, reviewlink, user_count):
+    
+    review_sections = loadAllReviews(soup, reviewlink)
+    extension = []
+    # Find all review sections
+
+    reviews = []
+    for section in review_sections:
+        review = {}
+        
+        # Extract reviewer name
+        name_span = section.find('span', class_='LfYwpe')
+        if name_span:
+            review['name'] = name_span.text.strip()
+        
+        # Extract rating
+        rating_div = section.find('div', class_='B1UG8d')
+        if rating_div:
+            review['rating'] = rating_div['aria-label']
+        
+        # Extract date
+        date_span = section.find('span', class_='ydlbEf')
+        if date_span:
+            review['date'] = date_span.text.strip()
+        
+        # Extract review text
+        review_p = section.find('p', class_='fzDEpf')
+        if review_p:
+            review['text'] = review_p.text.strip()
+        
+        reviews.append(review)
+    extension.append((reviewlink,user_count,reviews))
+    print(extension)
+    return (reviewlink,user_count,reviews)
+
+    
 
 def webstore_search(query, num_results=10):
     # Encode the query for use in the URL
     encoded_query = urllib.parse.quote(query)
-    driver = webdriver.Chrome()  # Or webdriver.Firefox(), etc.
 
     # Construct the Google search URL
     url = f"https://chromewebstore.google.com/search/{encoded_query}"
@@ -115,7 +210,7 @@ def webstore_search(query, num_results=10):
     # Find and extract search results
     search_results = []
     user_data = []
-    extension = []
+    extensions = []
     for result in soup.find_all('div', class_='Cb7Kte'):
         title = result.find('h2', class_='IcZnBc').text if result.find('h2', class_='IcZnBc') else "N/A"
         alink = result.find('a')['href'] if result.find('a') else "N/A"
@@ -151,71 +246,8 @@ def webstore_search(query, num_results=10):
 
             reviews = requests.get(reviewlink, headers=headers)
             soup = BeautifulSoup(reviews.content, 'html.parser')
-
-            # Find all review sections
-            review_sections = soup.find_all('section', class_='T7rvce')
-
-            reviews = []
-            print(len(review_sections))
-            for section in review_sections:
-                review = {}
-                
-                # Extract reviewer name
-                name_span = section.find('span', class_='LfYwpe')
-                if name_span:
-                    review['name'] = name_span.text.strip()
-                
-                # Extract rating
-                rating_div = section.find('div', class_='B1UG8d')
-                if rating_div:
-                    review['rating'] = rating_div['aria-label']
-                
-                # Extract date
-                date_span = section.find('span', class_='ydlbEf')
-                if date_span:
-                    review['date'] = date_span.text.strip()
-                
-                # Extract review text
-                review_p = section.find('p', class_='fzDEpf')
-                if review_p:
-                    review['text'] = review_p.text.strip()
-                
-                reviews.append(review)
-            extension.append((link,user_count,reviews))
-
-            load_more = soup.find('button', class_='mUIrbf-LgbsSe')
-
-            for button in load_more:
-                # Get the text of the button (or any other attribute you want to use for identification)
-                driver.get(reviewlink)
-                wait = WebDriverWait(driver, 10)
-
-                button_text = button.text.strip()
-                
-                # Find the corresponding element in Selenium
-                try:
-                    wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                    selenium_button = driver.find_element(By.CLASS_NAME, 'mUIrbf-LgbsSe-OWXEXe-dgl2Hf')
-                    
-                    # Click the button
-                    if button_text == 'Load more':
-                        selenium_button.click()
-                        time.sleep(2)
-                        # Wait for any changes after clicking (adjust as needed)
-                        wait.until(EC.staleness_of(selenium_button))
-                        
-                        # Get the updated page source and parse it again
-                        updated_soup = BeautifulSoup(driver.page_source, 'html.parser')
-                        review_sections = updated_soup.find_all('section', class_='T7rvce')
-                        print(len(review_sections))
-                    # Now you can continue parsing the updated page with BeautifulSoup
-                    # ...
-                    
-                        print(f"Clicked button with text: {button_text}")
-                
-                except Exception as e:
-                    print(f"Failed to click button with text: {button_text}")
-                    print(f"Error: {str(e)}")
+            extension = getReviews(soup, reviewlink, user_count)
+            extensions.append(extension)
 
             # if load_more:
             #     load_more.click()
@@ -248,7 +280,7 @@ def webstore_search(query, num_results=10):
             #         if review_p:
             #             review['text'] = review_p.text.strip()
     
-    df = pd.DataFrame(extension, columns=['Link', 'Number of Users', 'Reviews'])
+    df = pd.DataFrame(extensions, columns=['Link', 'Number of Users', 'Reviews'])
     return df
                 
 def main():
